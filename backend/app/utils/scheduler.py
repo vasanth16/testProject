@@ -41,7 +41,15 @@ async def cleanup_old_articles() -> None:
 
 def start_scheduler() -> None:
     """Start the scheduler with configured jobs."""
-    # Add fetch job
+    # Run initial fetch immediately on startup
+    scheduler.add_job(
+        scheduled_fetch,
+        id="initial_fetch",
+        name="Initial fetch on startup",
+        replace_existing=True,
+    )
+
+    # Add recurring fetch job
     scheduler.add_job(
         scheduled_fetch,
         trigger=IntervalTrigger(minutes=settings.FETCH_INTERVAL_MINUTES),
