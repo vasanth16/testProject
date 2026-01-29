@@ -3,10 +3,12 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     DEBUG: bool = False
-    FETCH_INTERVAL_MINUTES: int = 60
+    FETCH_INTERVAL_HOURS: int = 6
     DATABASE_URL: str = "sqlite+aiosqlite:///./news.db"
     CORS_ORIGINS: str = "http://localhost:5173"
     LOG_LEVEL: str = "INFO"
+    GEMINI_API_KEY: str = ""
+    RATING_THRESHOLD: int = 65
 
     class Config:
         env_file = ".env"

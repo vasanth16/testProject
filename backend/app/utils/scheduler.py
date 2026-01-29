@@ -1,14 +1,19 @@
+import asyncio
 import logging
 from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+# Rate limit: 5 requests per minute = 12 seconds between calls
+GEMINI_RATE_LIMIT_DELAY = 12
 from apscheduler.triggers.interval import IntervalTrigger
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from app.config import settings
 from app.database import async_session
 from app.models import Article
 from app.services.news_fetcher import fetch_and_store
+from app.services.article_rater import get_rater
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +44,56 @@ async def cleanup_old_articles() -> None:
         logger.info(f"Scheduler: Cleanup complete - deleted {deleted_count} old articles")
 
 
+async def retry_failed_ratings() -> None:
+    """Retry rating articles that failed on previous attempts."""
+    logger.info("Scheduler: Starting retry of failed ratings")
+
+    async with async_session() as session:
+        # Get articles that failed rating (limit to 5 to conserve daily quota)
+        result = await session.execute(
+            select(Article)
+            .where(Article.rating_failed == True)
+            .limit(5)
+        )
+        failed_articles = result.scalars().all()
+
+        if not failed_articles:
+            logger.info("Scheduler: No failed articles to retry")
+            return
+
+        logger.info(f"Scheduler: Retrying {len(failed_articles)} failed articles")
+
+        rater = get_rater()
+        success_count = 0
+
+        for i, article in enumerate(failed_articles):
+            # Rate limit: wait 12 seconds between calls (RPM=5)
+            if i > 0:
+                logger.debug(f"Rate limiting: waiting {GEMINI_RATE_LIMIT_DELAY}s before next API call")
+                await asyncio.sleep(GEMINI_RATE_LIMIT_DELAY)
+
+            logger.info(f"Retrying article {i + 1}/{len(failed_articles)}: {article.headline[:50]}")
+            rating = await rater.rate_article(
+                title=article.headline,
+                summary=article.summary or "No summary",
+                source=article.source_name,
+            )
+
+            score = rating.get("score")
+            if score is not None:
+                article.hopefulness_score = score
+                article.excluded_reason = rating.get("excluded_reason")
+                article.is_rated = True
+                article.rating_failed = False
+                success_count += 1
+                logger.debug(f"Retry succeeded: {score}")
+
+        await session.commit()
+        logger.info(
+            f"Scheduler: Retry complete - {success_count}/{len(failed_articles)} succeeded"
+        )
+
+
 def start_scheduler() -> None:
     """Start the scheduler with configured jobs."""
     # Run initial fetch immediately on startup
@@ -52,7 +107,7 @@ def start_scheduler() -> None:
     # Add recurring fetch job
     scheduler.add_job(
         scheduled_fetch,
-        trigger=IntervalTrigger(minutes=settings.FETCH_INTERVAL_MINUTES),
+        trigger=IntervalTrigger(hours=settings.FETCH_INTERVAL_HOURS),
         id="fetch_articles",
         name="Fetch articles from RSS sources",
         replace_existing=True,
@@ -67,9 +122,19 @@ def start_scheduler() -> None:
         replace_existing=True,
     )
 
+    # Add retry job for failed ratings - run every 2 hours
+    scheduler.add_job(
+        retry_failed_ratings,
+        trigger=IntervalTrigger(hours=2),
+        id="retry_ratings",
+        name="Retry failed article ratings",
+        replace_existing=True,
+    )
+
     scheduler.start()
     logger.info(
-        f"Scheduler started: fetching every {settings.FETCH_INTERVAL_MINUTES} minutes, cleanup daily"
+        f"Scheduler started: fetching every {settings.FETCH_INTERVAL_HOURS} hours, "
+        "retry ratings every 2 hours, cleanup daily"
     )
 
 

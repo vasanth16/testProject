@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Text, Float, DateTime, Index
+from sqlalchemy import String, Text, Integer, Boolean, DateTime, Index
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
@@ -18,7 +18,10 @@ class Article(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     category: Mapped[str | None] = mapped_column(String, nullable=True)
     region: Mapped[str | None] = mapped_column(String, nullable=True)
-    hopefulness_score: Mapped[float] = mapped_column(Float, default=0.0)
+    hopefulness_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_rated: Mapped[bool] = mapped_column(Boolean, default=False)
+    rating_failed: Mapped[bool] = mapped_column(Boolean, default=False)
+    excluded_reason: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (

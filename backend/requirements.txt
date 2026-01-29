@@ -8,3 +8,4 @@ pydantic-settings
 sqlalchemy[asyncio]
 aiosqlite
 apscheduler
+google-generativeai

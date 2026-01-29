@@ -24,7 +24,10 @@ class ArticleResponse(BaseModel):
     fetched_at: datetime
     category: str | None
     region: str | None
-    hopefulness_score: float
+    hopefulness_score: int | None
+    is_rated: bool
+    rating_failed: bool
+    excluded_reason: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

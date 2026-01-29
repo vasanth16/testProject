@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_session
 from app.models import Article
 from app.schemas import ArticleResponse, ArticleListResponse, CategoryCount, RegionCount
@@ -18,12 +19,18 @@ async def get_articles(
     offset: int = Query(default=0, ge=0),
     category: str | None = Query(default=None),
     region: str | None = Query(default=None),
-    min_score: float = Query(default=0.0, ge=0.0, le=1.0),
+    min_score: int = Query(default=None, ge=0, le=100),
     session: AsyncSession = Depends(get_session),
 ):
-    """Fetch paginated articles ordered by published date with optional filters."""
-    # Build base query with filters
-    base_query = select(Article).where(Article.hopefulness_score >= min_score)
+    """Fetch paginated articles filtered by rating score."""
+    # Use default threshold if not specified
+    score_threshold = min_score if min_score is not None else settings.RATING_THRESHOLD
+
+    # Build base query: only rated articles above threshold
+    base_query = select(Article).where(
+        Article.is_rated == True,
+        Article.hopefulness_score >= score_threshold,
+    )
 
     if category:
         base_query = base_query.where(Article.category == category)
@@ -35,8 +42,13 @@ async def get_articles(
     count_result = await session.execute(count_query)
     total = count_result.scalar_one()
 
-    # Get articles with pagination
-    query = base_query.order_by(Article.published_at.desc()).offset(offset).limit(limit)
+    # Get articles sorted by score (desc), then published date (desc)
+    query = (
+        base_query
+        .order_by(Article.hopefulness_score.desc(), Article.published_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
     result = await session.execute(query)
     articles = result.scalars().all()
 
@@ -54,6 +66,14 @@ async def trigger_fetch(session: AsyncSession = Depends(get_session)):
     """Trigger fetching articles from all RSS sources."""
     result = await fetch_and_store(session)
     return {"status": "ok", "fetched": result["fetched"], "new": result["new"]}
+
+
+@router.post("/retry-ratings")
+async def trigger_retry_ratings():
+    """Manually trigger retry of failed article ratings."""
+    from app.utils.scheduler import retry_failed_ratings
+    await retry_failed_ratings()
+    return {"status": "ok"}
 
 
 @router.get("/categories", response_model=list[CategoryCount])
