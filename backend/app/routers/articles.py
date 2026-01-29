@@ -11,6 +11,7 @@ from app.schemas import ArticleResponse, ArticleListResponse, CategoryCount, Reg
 from app.services.news_fetcher import fetch_and_store
 from app.services.guardian_fetcher import get_guardian_usage
 from app.services.thenewsapi_fetcher import get_thenewsapi_usage
+from app.services.article_rater import get_gemini_usage
 
 router = APIRouter(prefix="/articles", tags=["articles"])
 
@@ -192,6 +193,7 @@ async def get_stats(session: AsyncSession = Depends(get_session)):
         "api_usage": {
             "guardian": get_guardian_usage(),
             "thenewsapi": get_thenewsapi_usage(),
+            "gemini": get_gemini_usage(),
         },
         "config": {
             "rating_threshold": settings.RATING_THRESHOLD,
