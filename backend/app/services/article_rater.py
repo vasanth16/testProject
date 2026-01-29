@@ -69,7 +69,7 @@ class ArticleRater:
             if not settings.GEMINI_API_KEY:
                 raise ValueError("GEMINI_API_KEY not configured")
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            self._model = genai.GenerativeModel("gemini-2.0-flash")
+            self._model = genai.GenerativeModel("gemini-3-flash")
         return self._model
 
     def can_rate(self) -> bool:
