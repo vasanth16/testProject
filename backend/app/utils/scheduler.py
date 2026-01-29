@@ -8,7 +8,7 @@ from sqlalchemy import delete, select
 from app.config import settings
 from app.database import async_session
 from app.models import Article
-from app.services.news_fetcher import fetch_and_store
+from app.services.news_fetcher import fetch_and_store, ARTICLES_PER_BATCH
 from app.services.article_rater import get_rater
 from app.services.keyword_filter import pre_filter_article
 from app.services.article_selector import select_balanced_articles
@@ -107,9 +107,9 @@ async def retry_failed_ratings() -> None:
             for a in passed_filter
         ]
 
-        # Select articles based on remaining API quota
-        max_to_rate = min(len(passed_filter), rater.get_remaining_requests())
-        selected_dicts = select_balanced_articles(article_dicts, max_to_rate)
+        # Select articles based on remaining API quota (each call rates ARTICLES_PER_BATCH)
+        max_to_rate = rater.get_remaining_requests() * ARTICLES_PER_BATCH
+        selected_dicts = select_balanced_articles(article_dicts, min(len(passed_filter), max_to_rate))
         selected_ids = {d["id"] for d in selected_dicts}
 
         # Get the actual article objects for selected items
@@ -122,28 +122,31 @@ async def retry_failed_ratings() -> None:
         sources = set(a.source_name for a in articles_to_rate)
         logger.info(f"Scheduler: Rating up to {len(articles_to_rate)} articles from {len(sources)} sources")
 
-        # Rate articles individually until we hit the limit
+        # Rate articles in batches (multiple articles per API call)
         success_count = 0
-        for article in articles_to_rate:
+        for batch_start in range(0, len(articles_to_rate), ARTICLES_PER_BATCH):
             if not rater.can_rate():
                 logger.info(f"Scheduler: Daily limit reached after {success_count} ratings")
                 break
 
-            logger.info(f"Rating: {article.headline[:50]}...")
-            rating = await rater.rate_article(
-                title=article.headline,
-                summary=article.summary or "No summary",
-                source=article.source_name,
-            )
+            batch = articles_to_rate[batch_start:batch_start + ARTICLES_PER_BATCH]
+            batch_input = [
+                {"title": a.headline, "summary": a.summary or "No summary", "source": a.source_name}
+                for a in batch
+            ]
 
-            score = rating.get("score")
-            if score is not None:
-                article.hopefulness_score = score
-                article.excluded_reason = rating.get("excluded_reason")
-                article.is_rated = True
-                article.rating_failed = False
-                success_count += 1
-                logger.debug(f"Rated: {score}")
+            logger.info(f"Scheduler: Batch rating {len(batch)} articles")
+            ratings = await rater.rate_articles_batch(batch_input)
+
+            for article, rating in zip(batch, ratings):
+                score = rating.get("score")
+                if score is not None:
+                    article.hopefulness_score = score
+                    article.excluded_reason = rating.get("excluded_reason")
+                    article.is_rated = True
+                    article.rating_failed = False
+                    success_count += 1
+                    logger.debug(f"Rated '{article.headline[:30]}': {score}")
 
         await session.commit()
         logger.info(
