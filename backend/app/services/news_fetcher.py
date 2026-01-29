@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import re
 import feedparser
@@ -17,10 +16,8 @@ from app.services.thenewsapi_fetcher import fetch_thenewsapi_articles
 from app.services.keyword_filter import pre_filter_article
 from app.services.article_selector import select_balanced_articles
 
-# Rate limit: be conservative with free tier (15s between calls)
-GEMINI_RATE_LIMIT_DELAY = 15
-# Max articles to rate per fetch cycle (conserve daily quota)
-MAX_ARTICLES_PER_FETCH = 3
+# Max articles to rate per batch (all rated in single API call)
+MAX_ARTICLES_PER_BATCH = 10
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +212,7 @@ async def store_articles(articles: list[dict], session: AsyncSession) -> int:
     # Use balanced selection (round-robin by source) for fair distribution
     rater = get_rater()
     new_count = 0
-    articles_to_rate = select_balanced_articles(passed_filter, MAX_ARTICLES_PER_FETCH)
+    articles_to_rate = select_balanced_articles(passed_filter, MAX_ARTICLES_PER_BATCH)
 
     # Get the guids of selected articles to determine which are unrated
     selected_guids = {a.get("guid") for a in articles_to_rate}
@@ -257,59 +254,54 @@ async def store_articles(articles: list[dict], session: AsyncSession) -> int:
         session.add(article)
         new_count += 1
 
-    # Rate articles that passed the pre-filter
-    for i, article_data in enumerate(articles_to_rate):
-        headline = article_data.get("title", "")
-        summary = article_data.get("summary") or ""
+    # Rate articles in batch (single API call for all articles)
+    if articles_to_rate:
+        batch_input = [
+            {"title": a.get("title", ""), "summary": a.get("summary") or "", "source": a.get("source_name", "")}
+            for a in articles_to_rate
+        ]
+        logger.info(f"Batch rating {len(articles_to_rate)} articles in single API call")
+        ratings = await rater.rate_articles_batch(batch_input)
 
-        # Rate limit: wait 12 seconds between calls (RPM=5)
-        if i > 0:
-            logger.debug(f"Rate limiting: waiting {GEMINI_RATE_LIMIT_DELAY}s before next API call")
-            await asyncio.sleep(GEMINI_RATE_LIMIT_DELAY)
+        for article_data, rating in zip(articles_to_rate, ratings):
+            headline = article_data.get("title", "")
+            summary = article_data.get("summary") or ""
+            guid = article_data.get("guid")
 
-        logger.info(f"Rating article {i + 1}/{len(articles_to_rate)}: {headline[:50]}")
-        rating = await rater.rate_article(
-            title=headline,
-            summary=summary,
-            source=article_data.get("source_name", ""),
-        )
+            # Detect category
+            category = detect_category(headline, summary)
 
-        guid = article_data.get("guid")
+            # Get image URL
+            image_url = article_data.get("image_url")
+            if not image_url:
+                article_link = article_data.get("link", "")
+                if article_link:
+                    image_url = await fetch_og_image(article_link)
 
-        # Detect category
-        category = detect_category(headline, summary)
+            # Determine rating status
+            score = rating.get("score")
+            rating_failed = score is None
+            is_rated = not rating_failed
 
-        # Get image URL
-        image_url = article_data.get("image_url")
-        if not image_url:
-            article_link = article_data.get("link", "")
-            if article_link:
-                image_url = await fetch_og_image(article_link)
+            article = Article(
+                guid=guid,
+                headline=headline,
+                summary=summary,
+                source_url=article_data.get("link", ""),
+                source_name=article_data.get("source_name", ""),
+                image_url=image_url,
+                published_at=article_data.get("published"),
+                hopefulness_score=score,
+                category=category,
+                is_rated=is_rated,
+                rating_failed=rating_failed,
+                excluded_reason=rating.get("excluded_reason"),
+            )
+            session.add(article)
+            new_count += 1
 
-        # Determine rating status
-        score = rating.get("score")
-        rating_failed = score is None
-        is_rated = not rating_failed
-
-        article = Article(
-            guid=guid,
-            headline=headline,
-            summary=summary,
-            source_url=article_data.get("link", ""),
-            source_name=article_data.get("source_name", ""),
-            image_url=image_url,
-            published_at=article_data.get("published"),
-            hopefulness_score=score,
-            category=category,
-            is_rated=is_rated,
-            rating_failed=rating_failed,
-            excluded_reason=rating.get("excluded_reason"),
-        )
-        session.add(article)
-        new_count += 1
-
-        if score is not None:
-            logger.debug(f"Rated '{headline[:50]}': {score} - {rating.get('rationale', '')[:50]}")
+            if score is not None:
+                logger.debug(f"Rated '{headline[:50]}': {score}")
 
     # Store remaining articles without rating (will be rated later by retry job)
     for article_data in articles_to_store_unrated:

@@ -1,11 +1,7 @@
-import asyncio
 import logging
 from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
-# Rate limit: be conservative with free tier (15s between calls)
-GEMINI_RATE_LIMIT_DELAY = 15
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy import delete, select
 
@@ -103,33 +99,30 @@ async def retry_failed_ratings() -> None:
             for a in passed_filter
         ]
 
-        # Use balanced selection (round-robin by source) - limit to 3 to conserve API quota
-        selected_dicts = select_balanced_articles(article_dicts, 3)
+        # Use balanced selection (round-robin by source) - batch 10 articles per API call
+        selected_dicts = select_balanced_articles(article_dicts, 10)
         selected_ids = {d["id"] for d in selected_dicts}
 
         # Get the actual article objects for selected items
         articles_to_rate = [a for a in passed_filter if a.id in selected_ids]
 
-        if articles_to_rate:
-            sources = set(a.source_name for a in articles_to_rate)
-            logger.info(f"Scheduler: Rating {len(articles_to_rate)} articles from {len(sources)} sources")
+        if not articles_to_rate:
+            await session.commit()
+            return
 
+        sources = set(a.source_name for a in articles_to_rate)
+        logger.info(f"Scheduler: Batch rating {len(articles_to_rate)} articles from {len(sources)} sources")
+
+        # Batch rate all articles in single API call
         rater = get_rater()
+        batch_input = [
+            {"title": a.headline, "summary": a.summary or "No summary", "source": a.source_name}
+            for a in articles_to_rate
+        ]
+        ratings = await rater.rate_articles_batch(batch_input)
+
         success_count = 0
-
-        for i, article in enumerate(articles_to_rate):
-            # Rate limit: wait 12 seconds between Gemini calls (RPM=5)
-            if i > 0:
-                logger.debug(f"Rate limiting: waiting {GEMINI_RATE_LIMIT_DELAY}s before next API call")
-                await asyncio.sleep(GEMINI_RATE_LIMIT_DELAY)
-
-            logger.info(f"Rating article {i + 1}/{len(articles_to_rate)}: {article.headline[:50]}")
-            rating = await rater.rate_article(
-                title=article.headline,
-                summary=article.summary or "No summary",
-                source=article.source_name,
-            )
-
+        for article, rating in zip(articles_to_rate, ratings):
             score = rating.get("score")
             if score is not None:
                 article.hopefulness_score = score
@@ -137,7 +130,6 @@ async def retry_failed_ratings() -> None:
                 article.is_rated = True
                 article.rating_failed = False
                 success_count += 1
-                logger.debug(f"Rating succeeded: {score}")
 
         await session.commit()
         logger.info(
