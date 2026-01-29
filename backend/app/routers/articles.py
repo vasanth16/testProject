@@ -80,10 +80,14 @@ async def trigger_retry_ratings():
 
 @router.get("/categories", response_model=list[CategoryCount])
 async def get_categories(session: AsyncSession = Depends(get_session)):
-    """Return list of categories with article counts."""
+    """Return list of categories with counts of displayed articles only."""
     query = (
         select(Article.category, func.count(Article.id).label("count"))
-        .where(Article.category.isnot(None))
+        .where(
+            Article.category.isnot(None),
+            Article.is_rated == True,
+            Article.hopefulness_score >= settings.RATING_THRESHOLD,
+        )
         .group_by(Article.category)
         .order_by(func.count(Article.id).desc())
     )
@@ -95,10 +99,14 @@ async def get_categories(session: AsyncSession = Depends(get_session)):
 
 @router.get("/regions", response_model=list[RegionCount])
 async def get_regions(session: AsyncSession = Depends(get_session)):
-    """Return list of regions with article counts."""
+    """Return list of regions with counts of displayed articles only."""
     query = (
         select(Article.region, func.count(Article.id).label("count"))
-        .where(Article.region.isnot(None))
+        .where(
+            Article.region.isnot(None),
+            Article.is_rated == True,
+            Article.hopefulness_score >= settings.RATING_THRESHOLD,
+        )
         .group_by(Article.region)
         .order_by(func.count(Article.id).desc())
     )

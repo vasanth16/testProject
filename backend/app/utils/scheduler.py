@@ -33,9 +33,9 @@ async def scheduled_fetch() -> None:
 
 
 async def cleanup_old_articles() -> None:
-    """Delete articles older than 7 days."""
+    """Delete articles older than 14 days."""
     logger.info("Scheduler: Starting cleanup of old articles")
-    cutoff_date = datetime.utcnow() - timedelta(days=7)
+    cutoff_date = datetime.utcnow() - timedelta(days=14)
 
     async with async_session() as session:
         result = await session.execute(
