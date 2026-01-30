@@ -10,6 +10,8 @@ NEGATIVE_KEYWORDS = {
     "death": [
         "death toll", "dead", "dies", "died", "fatal", "fatality",
         "tragedy", "devastating", "catastrophe", "casualties",
+        "obituary", "passes away", "passed away", "rest in peace", "rip",
+        "mourns", "mourning", "in memoriam", "tribute to the late",
     ],
     "conflict": [
         "slams", "blasts", "rips", "clashes", "controversy", "scandal",
@@ -23,8 +25,11 @@ NEGATIVE_KEYWORDS = {
 
 TRIVIAL_KEYWORDS = {
     "celebrity": [
-        "kardashian", "celebrity gossip", "influencer drama", "viral video",
-        "tiktok trend", "selfie", "paparazzi", "reality tv",
+        "celebrity gossip", "influencer drama", "viral video",
+        "tiktok trend", "selfie", "paparazzi", "reality tv", "red carpet",
+        "award show", "box office", "blockbuster", "premiere",
+        "celebrity couple", "breakup", "baby bump",
+        "net worth", "mansion", "lavish", "glamour",
     ],
     "clickbait": [
         "you won't believe", "shocking reason", "this one trick",

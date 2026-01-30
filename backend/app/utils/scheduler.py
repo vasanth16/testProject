@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timedelta
 
@@ -147,6 +148,10 @@ async def retry_failed_ratings() -> None:
                     article.rating_failed = False
                     success_count += 1
                     logger.debug(f"Rated '{article.headline[:30]}': {score}")
+
+            # Delay between batches to respect RPM limit (5 req/min)
+            if batch_start + ARTICLES_PER_BATCH < len(articles_to_rate):
+                await asyncio.sleep(15)
 
         await session.commit()
         logger.info(

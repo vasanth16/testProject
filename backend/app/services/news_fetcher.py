@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 import feedparser
@@ -318,6 +319,10 @@ async def store_articles(articles: list[dict], session: AsyncSession) -> int:
 
             if score is not None:
                 logger.debug(f"Rated '{headline[:50]}': {score}")
+
+        # Delay between batches to respect RPM limit (5 req/min)
+        if batch_start + ARTICLES_PER_BATCH < len(articles_to_rate):
+            await asyncio.sleep(15)
 
     if rated_count > 0:
         logger.info(f"Rated {rated_count} articles this fetch cycle")

@@ -17,6 +17,7 @@ Return score: 0 and excluded_reason: "partisan_content" for:
 ### Subtract Points
 - Violence/crime focus (-15 to -20): Centering on harm
 - Outrage bait (-15 to -20): Designed to provoke anger
+- Celebrity/entertainment (-15 to -20): Celebrity news, gossip, movies, TV, music industry, awards shows, red carpet
 - Hopeless framing (-10 to -15): Problems without solutions
 - Death/disaster as core (-10 to -15): Unless about recovery
 - Cynical tone (-10 to -15): Dismissive or pessimistic
