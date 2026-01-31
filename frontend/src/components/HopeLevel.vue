@@ -9,11 +9,11 @@ const props = defineProps({
 })
 
 const levels = [
-  { min: 90, label: 'Radiant', color: 'bg-amber-100 text-amber-700', barColor: 'bg-amber-400', icon: '✦', tier: 5 },
-  { min: 80, label: 'Inspiring', color: 'bg-rose-100 text-rose-700', barColor: 'bg-rose-400', icon: '♥', tier: 4 },
-  { min: 70, label: 'Uplifting', color: 'bg-sky-100 text-sky-700', barColor: 'bg-sky-400', icon: '↑', tier: 3 },
-  { min: 60, label: 'Hopeful', color: 'bg-emerald-100 text-emerald-700', barColor: 'bg-emerald-400', icon: '✓', tier: 2 },
-  { min: 50, label: 'Encouraging', color: 'bg-slate-100 text-slate-600', barColor: 'bg-slate-400', icon: '○', tier: 1 },
+  { min: 90, label: 'Radiant', color: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300', barColor: 'bg-amber-400', icon: '✦', tier: 5 },
+  { min: 80, label: 'Inspiring', color: 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300', barColor: 'bg-rose-400', icon: '♥', tier: 4 },
+  { min: 70, label: 'Uplifting', color: 'bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300', barColor: 'bg-sky-400', icon: '↑', tier: 3 },
+  { min: 60, label: 'Hopeful', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300', barColor: 'bg-emerald-400', icon: '✓', tier: 2 },
+  { min: 50, label: 'Encouraging', color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400', barColor: 'bg-slate-400', icon: '○', tier: 1 },
 ]
 
 const level = computed(() => {
@@ -37,7 +37,7 @@ const barWidth = computed(() => {
       <span class="opacity-70">{{ level.icon }}</span>
       {{ level.label }}
     </span>
-    <span class="mt-0.5 h-[2px] w-full bg-black/10 rounded-full overflow-hidden">
+    <span class="mt-0.5 h-[2px] w-full bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
       <span
         :class="[level.barColor, 'block h-full rounded-full transition-all']"
         :style="{ width: barWidth }"

@@ -121,7 +121,7 @@ function handleRetry() {
     </div>
 
     <!-- Results count -->
-    <p v-if="!loading && articles.length > 0" class="text-xs text-gray-400 mb-3">
+    <p v-if="!loading && articles.length > 0" class="text-xs text-gray-400 dark:text-gray-500 mb-3">
       {{ articles.length }} of {{ total }} articles
     </p>
 
@@ -161,8 +161,8 @@ function handleRetry() {
       v-else-if="!loading && !error"
       class="text-center py-12"
     >
-      <p class="text-gray-500 text-lg">No articles found</p>
-      <p class="text-gray-400 text-sm mt-2">Try adjusting your filters or check back later</p>
+      <p class="text-gray-500 dark:text-gray-400 text-lg">No articles found</p>
+      <p class="text-gray-400 dark:text-gray-500 text-sm mt-2">Try adjusting your filters or check back later</p>
     </div>
 
     <!-- Load more -->
@@ -170,7 +170,7 @@ function handleRetry() {
       <button
         v-if="hasMore && !loading"
         @click="loadMore"
-        class="px-4 py-2 text-sm bg-gray-100 text-gray-600 font-medium rounded-md hover:bg-gray-200 transition-colors"
+        class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-medium rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
       >
         Load more
       </button>
@@ -179,7 +179,7 @@ function handleRetry() {
         v-else-if="loading"
       />
 
-      <p v-else class="text-gray-300 text-xs">
+      <p v-else class="text-gray-300 dark:text-gray-600 text-xs">
         End of articles
       </p>
     </div>

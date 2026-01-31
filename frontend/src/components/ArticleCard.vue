@@ -12,12 +12,12 @@ const props = defineProps({
 })
 
 const categoryColors = {
-  environment: 'bg-green-100 text-green-700',
-  health: 'bg-red-100 text-red-700',
-  technology: 'bg-blue-100 text-blue-700',
-  social: 'bg-purple-100 text-purple-700',
-  humanitarian: 'bg-orange-100 text-orange-700',
-  general: 'bg-gray-100 text-gray-600',
+  environment: 'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300',
+  health: 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300',
+  technology: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300',
+  social: 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300',
+  humanitarian: 'bg-lime-100 dark:bg-lime-900/50 text-lime-700 dark:text-lime-300',
+  general: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
 }
 
 const categoryColor = computed(() => {
@@ -90,10 +90,10 @@ async function copyToClipboard() {
 
 <template>
   <article
-    class="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex"
+    class="bg-white dark:bg-gray-900 rounded-lg shadow-sm hover:shadow-md dark:shadow-gray-900/50 transition-all duration-200 overflow-hidden flex"
   >
     <!-- Image -->
-    <div class="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 bg-gray-100">
+    <div class="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 bg-gray-100 dark:bg-gray-800">
       <img
         :src="article.image_url || fallbackImage"
         :alt="article.headline"
@@ -114,33 +114,33 @@ async function copyToClipboard() {
         >
           {{ article.category }}
         </span>
-        <span class="text-[10px] text-gray-400">{{ relativeTime }}</span>
+        <span class="text-[10px] text-gray-400 dark:text-gray-500">{{ relativeTime }}</span>
       </div>
 
       <!-- Headline -->
-      <h3 class="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 mb-1">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white leading-tight line-clamp-2 mb-1">
         <a
           :href="article.source_url"
           target="_blank"
           rel="noopener noreferrer"
-          class="hover:text-primary-600 transition-colors"
+          class="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
         >
           {{ article.headline }}
         </a>
       </h3>
 
       <!-- Summary -->
-      <p class="text-xs text-gray-500 line-clamp-2 flex-1">
+      <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 flex-1">
         {{ cleanSummary }}
       </p>
 
       <!-- Footer -->
       <div class="flex items-center justify-between mt-2">
-        <span class="text-[10px] text-gray-400">{{ article.source_name }}</span>
+        <span class="text-[10px] text-gray-400 dark:text-gray-500">{{ article.source_name }}</span>
         <div class="flex items-center gap-2">
           <button
             @click="handleShare"
-            class="text-gray-300 hover:text-primary-600 transition-colors"
+            class="text-gray-300 dark:text-gray-600 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
             title="Share article"
           >
             <ShareIcon class="w-3.5 h-3.5" />
@@ -149,7 +149,7 @@ async function copyToClipboard() {
             :href="article.source_url"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-gray-300 hover:text-primary-600 transition-colors"
+            class="text-gray-300 dark:text-gray-600 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
             title="Open article"
           >
             <ArrowTopRightOnSquareIcon class="w-3.5 h-3.5" />
