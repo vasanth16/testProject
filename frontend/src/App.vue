@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { inject } from '@vercel/analytics'
 import AppHeader from './components/AppHeader.vue'
 import FilterBar from './components/FilterBar.vue'
 import ArticleFeed from './components/ArticleFeed.vue'
@@ -32,6 +33,8 @@ function handleFilterChange({ type, value }) {
 
 onMounted(() => {
   fetchFilters()
+  // Initialize Vercel Analytics
+  inject()
 })
 </script>
 
